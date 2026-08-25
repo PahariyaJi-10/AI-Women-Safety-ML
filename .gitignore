@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.env/
+
+# Large datasets
+dataset/raw/
+dataset/processed/
+
+# ML model files
+models/*.h5
+models/*.keras
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.safetensors
+
+# Results / generated files
+results/
+
+# Hugging Face cache
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
