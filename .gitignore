@@ -34,3 +34,5 @@ results/
 # OS files
 .DS_Store
 Thumbs.db
+# Generated ML datasets
+dataset/accelerometer/*.npy
