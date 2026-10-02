@@ -32,6 +32,8 @@ STEP_SIZE = 50
 
 X_windows = []
 y_labels = []
+groups = []
+
 
 processed_files = 0
 skipped_files = 0
@@ -100,9 +102,19 @@ for count, file_path in enumerate(csv_files, start=1):
         # Select sensor stream 0,0
         # ----------------------------------------------------
 
+        sensor_col_5 = pd.to_numeric(
+            df.iloc[:, 5],
+            errors="coerce"
+        )
+
+        sensor_col_6 = pd.to_numeric(
+            df.iloc[:, 6],
+            errors="coerce"
+        )
+
         df_selected = df[
-            (pd.to_numeric(df.iloc[:, 5], errors="coerce") == 0) &
-            (pd.to_numeric(df.iloc[:, 6], errors="coerce") == 0)
+            (sensor_col_5 == 0) &
+            (sensor_col_6 == 0)
         ]
 
         # ----------------------------------------------------
@@ -111,16 +123,25 @@ for count, file_path in enumerate(csv_files, start=1):
 
         acceleration = df_selected.iloc[:, 2:5].copy()
 
-        # Convert each column to numeric
+        # ----------------------------------------------------
+        # Convert X, Y, Z to numeric
+        # ----------------------------------------------------
+
         acceleration = acceleration.apply(
             pd.to_numeric,
             errors="coerce"
         )
 
+        # ----------------------------------------------------
         # Remove invalid rows
+        # ----------------------------------------------------
+
         acceleration = acceleration.dropna()
 
+        # ----------------------------------------------------
         # Convert to NumPy
+        # ----------------------------------------------------
+
         acceleration = acceleration.values.astype(
             np.float32
         )
@@ -136,6 +157,9 @@ for count, file_path in enumerate(csv_files, start=1):
 
         # ----------------------------------------------------
         # Determine label
+        #
+        # ADL  = 0 = NORMAL
+        # FALL = 1 = FALL
         # ----------------------------------------------------
 
         filename = file_path.name.upper()
@@ -154,6 +178,35 @@ for count, file_path in enumerate(csv_files, start=1):
             continue
 
         # ----------------------------------------------------
+        # Extract subject ID
+        #
+        # Example:
+        # UMAFall_Subject_13_ADL_Walking_1_...
+        #
+        # split("_") gives:
+        # [0] UMAFall
+        # [1] Subject
+        # [2] 13
+        # ----------------------------------------------------
+
+        try:
+
+            parts = file_path.name.split("_")
+
+            subject_id = int(parts[2])
+
+        except Exception:
+
+            print(
+                "Skipped:",
+                file_path.name,
+                "| could not determine subject ID"
+            )
+
+            skipped_files += 1
+            continue
+
+        # ----------------------------------------------------
         # Create windows
         # ----------------------------------------------------
 
@@ -167,11 +220,18 @@ for count, file_path in enumerate(csv_files, start=1):
                 start:start + WINDOW_SIZE
             ]
 
+            # ------------------------------------------------
             # 450 × 3 → 1350 values
+            # ------------------------------------------------
+
             window_flat = window.reshape(-1)
 
             X_windows.append(window_flat)
+
             y_labels.append(label)
+
+            # Save subject ID for this exact window
+            groups.append(subject_id)
 
         processed_files += 1
 
@@ -211,16 +271,37 @@ y = np.array(
     dtype=np.int64
 )
 
+groups = np.array(
+    groups,
+    dtype=np.int64
+)
+
 
 # ============================================================
-# 7. SAVE
+# 7. SAVE DATASETS
 # ============================================================
 
 X_path = output_folder / "X_umafall.npy"
+
 y_path = output_folder / "y_umafall.npy"
 
-np.save(X_path, X)
-np.save(y_path, y)
+groups_path = output_folder / "groups_umafall.npy"
+
+
+np.save(
+    X_path,
+    X
+)
+
+np.save(
+    y_path,
+    y
+)
+
+np.save(
+    groups_path,
+    groups
+)
 
 
 # ============================================================
@@ -228,27 +309,70 @@ np.save(y_path, y)
 # ============================================================
 
 print()
+
 print("=" * 60)
 print("DATASET PREPARATION COMPLETE")
 print("=" * 60)
 
-print("Processed files:", processed_files)
-print("Skipped files:", skipped_files)
+print(
+    "Processed files:",
+    processed_files
+)
+
+print(
+    "Skipped files:",
+    skipped_files
+)
 
 print()
 
-print("X shape:", X.shape)
-print("y shape:", y.shape)
+print(
+    "X shape:",
+    X.shape
+)
+
+print(
+    "y shape:",
+    y.shape
+)
+
+print(
+    "groups shape:",
+    groups.shape
+)
 
 print()
 
-print("NORMAL windows:", np.sum(y == 0))
-print("FALL windows:", np.sum(y == 1))
+print(
+    "Number of subjects:",
+    len(np.unique(groups))
+)
+
+print(
+    "Subjects:",
+    np.unique(groups)
+)
+
+print()
+
+print(
+    "NORMAL windows:",
+    np.sum(y == 0)
+)
+
+print(
+    "FALL windows:",
+    np.sum(y == 1)
+)
 
 print()
 
 print("Saved:")
+
 print(X_path)
+
 print(y_path)
+
+print(groups_path)
 
 print("=" * 60)
